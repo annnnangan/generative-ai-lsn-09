@@ -1,6 +1,8 @@
 import streamlit as st
 import time
 import os
+import json
+from datetime import datetime
 from dotenv import load_dotenv
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
@@ -105,6 +107,40 @@ def initialize_openrouter_agent(model_name):
         st.error(f"❌ Failed to initialize OpenRouter agent: {str(e)}")
         return None
 
+def export_conversation():
+    """Export conversation history to JSON file"""
+    if not st.session_state.chat_history:
+        return None
+    
+    conversation_data = {
+        "export_date": datetime.now().isoformat(),
+        "model_used": st.session_state.get("last_model", "Unknown"),
+        "conversation": st.session_state.chat_history
+    }
+    
+    return json.dumps(conversation_data, indent=2)
+
+def clear_conversation():
+    """Clear conversation history"""
+    st.session_state.chat_history = []
+    st.session_state.current_response = ""
+    st.success("🗑️ Conversation history cleared!")
+
+def handle_api_error(error, model_name):
+    """Handle different types of API errors with user-friendly messages"""
+    error_msg = str(error).lower()
+    
+    if "rate limit" in error_msg or "quota" in error_msg:
+        return f"⚠️ Rate limit exceeded for {model_name}. Please try again later or switch to a different model."
+    elif "authentication" in error_msg or "unauthorized" in error_msg:
+        return "🔑 Authentication failed. Please check your OpenRouter API key."
+    elif "model not found" in error_msg:
+        return f"❌ Model {model_name} is not available. Please select a different model."
+    elif "timeout" in error_msg:
+        return "⏰ Request timed out. Please try again."
+    else:
+        return f"❌ Error with {model_name}: {str(error)}"
+
 # Header
 st.markdown('<div class="main-header">', unsafe_allow_html=True)
 st.markdown('<h1>🤖 Streamlit AI Chat Application</h1>', unsafe_allow_html=True)
@@ -194,27 +230,33 @@ with col1:
                             "content": question
                         })
                         
+                        # Track the model used
+                        st.session_state.last_model = selected_model
+                        
                         # Get AI response from OpenRouter
                         with st.spinner("🤖 Getting response from AI..."):
                             st.info(f"🔧 Using model: {selected_model}")
                             st.info(f"🔧 API Base URL: {OPENROUTER_BASE_URL}")
+                            
                             response = asyncio.run(agent.run(full_prompt))
                             # Extract the actual content from AgentRunResult
                             ai_response = response.output if hasattr(response, 'output') else str(response)
-                        
-                        # Add AI response to history
-                        st.session_state.chat_history.append({
-                            "role": "ai",
-                            "content": ai_response
-                        })
-                        
-                        st.session_state.current_response = ai_response
-                        st.success("✅ Response received from OpenRouter!")
-                        st.rerun()
-                        
+                            
+                            # Add AI response to history
+                            st.session_state.chat_history.append({
+                                "role": "ai",
+                                "content": ai_response
+                            })
+                            
+                            st.session_state.current_response = ai_response
+                            st.success("✅ Response received from OpenRouter!")
+                            st.rerun()
+                            
                     except Exception as e:
-                        st.error(f"❌ Error getting response: {str(e)}")
-                        st.session_state.current_response = f"Error: {str(e)}"
+                        # Use improved error handling
+                        error_message = handle_api_error(e, selected_model)
+                        st.error(error_message)
+                        st.session_state.current_response = f"Error: {error_message}"
                         st.rerun()
 
 with col2:
@@ -241,6 +283,31 @@ with col2:
     
     st.markdown("---")
     
+    # Conversation Management Controls
+    st.markdown('<div class="section-margin">', unsafe_allow_html=True)
+    col_export, col_clear = st.columns(2)
+    
+    with col_export:
+        if st.button("📥 Export Chat", use_container_width=True):
+            conversation_json = export_conversation()
+            if conversation_json:
+                st.download_button(
+                    label="💾 Download JSON",
+                    data=conversation_json,
+                    file_name=f"conversation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json",
+                    use_container_width=True
+                )
+            else:
+                st.warning("No conversation to export")
+    
+    with col_clear:
+        if st.button("🗑️ Clear Chat", use_container_width=True):
+            clear_conversation()
+            st.rerun()
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
     # Chat History
     st.markdown('<div class="section-margin">', unsafe_allow_html=True)
     with st.expander("📚 Previous Conversations", expanded=True):
@@ -263,18 +330,29 @@ with col2:
         else:
             st.info("No previous conversations yet.")
 
-# Status Bar
+# Performance & Status Section
 st.markdown("---")
+st.subheader("📊 Performance & Status")
+
 col_status1, col_status2, col_status3 = st.columns(3)
 
 with col_status1:
-    st.success("🔗 Connected to OpenRouter")
+    if OPENROUTER_API_KEY and OPENROUTER_API_KEY != "your_openrouter_api_key_here":
+        st.success("🔗 Connected to OpenRouter")
+    else:
+        st.error("❌ OpenRouter not configured")
 
 with col_status2:
-    st.info("📊 Langfuse Analytics Active")
+    if st.session_state.chat_history:
+        st.info(f"💬 {len(st.session_state.chat_history)} messages")
+    else:
+        st.info("💬 No messages yet")
 
 with col_status3:
-    st.success("⚡ Ready")
+    if st.session_state.get("last_model"):
+        st.success(f"🤖 Last model: {st.session_state.last_model}")
+    else:
+        st.success("⚡ Ready")
 
 # Footer information
 st.markdown("---")

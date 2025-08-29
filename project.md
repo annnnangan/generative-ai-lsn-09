@@ -20,10 +20,10 @@ This project is a simple yet powerful Streamlit-based chat application that enab
 
 ### Phase 3: Enhanced Features (Optional)
 
-- [ ] Add conversation export functionality
-- [ ] Implement model switching between different OpenRouter models
-- [ ] Add basic error handling for API failures
-- [ ] Optimize streaming performance
+- [x] Add conversation export functionality
+- [x] Implement model switching between different OpenRouter models
+- [x] Add basic error handling for API failures
+- [x] Optimize streaming performance
 
 ### Phase 4: Langfuse Integration (Deprioritized)
 

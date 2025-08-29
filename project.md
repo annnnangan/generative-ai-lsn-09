@@ -27,10 +27,11 @@ This project is a simple yet powerful Streamlit-based chat application that enab
 
 ### Phase 4: Langfuse Integration (Deprioritized)
 
-- [ ] Install Langfuse dependencies
-- [ ] Configure basic conversation tracking
-- [ ] Add performance metrics monitoring
-- [ ] Implement analytics dashboard
+- [x] Install Langfuse dependencies
+- [x] Add langfuse env variable
+- [x] Configure basic conversation tracking
+- [x] Add performance metrics monitoring
+- [x] Implement analytics dashboard
 
 ## Key Implementation Principles
 
@@ -44,5 +45,6 @@ This project is a simple yet powerful Streamlit-based chat application that enab
 ## Dependencies Required
 
 - `streamlit` (already installed)
-- `pydantic-ai-slim[openai]` (to be installed)
+- `pydantic-ai-slim[openai]` (already installed))
 - `python-dotenv` (for environment management)
+- `Langfuse` (already installed)

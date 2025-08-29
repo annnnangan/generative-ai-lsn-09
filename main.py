@@ -95,11 +95,11 @@ def initialize_openrouter_agent(model_name):
             st.error("⚠️ Please set your OpenRouter API key in the .env file")
             return None
         
-        model = OpenAIModel(
-            model_name,
-            base_url=OPENROUTER_BASE_URL,
-            api_key=OPENROUTER_API_KEY
-        )
+        # Set environment variables for OpenRouter
+        os.environ["OPENAI_API_KEY"] = OPENROUTER_API_KEY
+        os.environ["OPENAI_BASE_URL"] = OPENROUTER_BASE_URL
+        
+        model = OpenAIModel(model_name)
         return Agent(model)
     except Exception as e:
         st.error(f"❌ Failed to initialize OpenRouter agent: {str(e)}")
@@ -128,12 +128,12 @@ with col1:
     # Model Selection
     st.markdown('<div class="section-margin">', unsafe_allow_html=True)
     model_options = [
-        "openai/gpt-4o-mini",
-        "openai/gpt-4o",
-        "anthropic/claude-3-haiku",
-        "anthropic/claude-3.1-sonnet",
-        "meta-llama/llama-3.1-8b",
-        "google/gemini-pro"
+        "gpt-4o-mini",
+        "gpt-4o",
+        "claude-3-haiku",
+        "claude-3.1-sonnet",
+        "llama-3.1-8b",
+        "gemini-pro"
     ]
     selected_model = st.selectbox(
         "Model Selection",
@@ -196,8 +196,11 @@ with col1:
                         
                         # Get AI response from OpenRouter
                         with st.spinner("🤖 Getting response from AI..."):
+                            st.info(f"🔧 Using model: {selected_model}")
+                            st.info(f"🔧 API Base URL: {OPENROUTER_BASE_URL}")
                             response = asyncio.run(agent.run(full_prompt))
-                            ai_response = str(response)
+                            # Extract the actual content from AgentRunResult
+                            ai_response = response.output if hasattr(response, 'output') else str(response)
                         
                         # Add AI response to history
                         st.session_state.chat_history.append({
@@ -230,7 +233,9 @@ with col2:
             if st.session_state.current_response.startswith("Error:"):
                 st.error(f"💭 {st.session_state.current_response}")
             else:
-                st.markdown(f"💭 {st.session_state.current_response}")
+                # Display AI response with proper formatting
+                st.markdown("💭 **AI Response:**")
+                st.markdown(st.session_state.current_response)
         else:
             st.info("💭 AI response will appear here after you send a message...")
     
@@ -250,9 +255,11 @@ with col2:
                 else:
                     st.markdown(f"""
                     <div class="chat-message ai-message">
-                        <strong>🤖 AI:</strong> {message["content"]}
+                        <strong>🤖 AI:</strong>
                     </div>
                     """, unsafe_allow_html=True)
+                    # Display AI response with proper markdown formatting
+                    st.markdown(message["content"])
         else:
             st.info("No previous conversations yet.")
 
